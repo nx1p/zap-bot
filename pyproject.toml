@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "zap-bot"
+version = "0.1.0"
+description = ""
+authors = ["nx1p <email@marci.tech>"]
+readme = "README.md"
+packages = [{include = "zap_bot"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
