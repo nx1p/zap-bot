@@ -8,6 +8,8 @@ packages = [{include = "zap_bot"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
+discord-py = "^2.3.1"
+edgegpt = "^0.11.8"
 
 
 [build-system]
