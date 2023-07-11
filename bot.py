@@ -17,8 +17,8 @@ with open('./secrets/config.json') as f:
   data = json.load(f)
   token = data["TOKEN"]
 
-# Create a bot instance with intents and a fixed prefix
-bot = commands.Bot(command_prefix="!", intents=intents)
+# Create a bot instance with intents and no prefix
+bot = commands.Bot(command_prefix="", intents=intents)
 
 # Declare a global variable for the chatbot
 chatbot = None
@@ -37,51 +37,55 @@ async def on_ready():
     chatbot = await Chatbot.create(cookies=cookies) # Use await here
     print("Chatbot is ready")
 
-# Write a command that sends a message to edgegpt chatbot and receives a response
-@bot.command()
-async def chat(ctx, *, message):
-    # The parameters for edgegpt chatbot
-    params = {
-        # Use one of the ConversationStyle values here
-        "conversation_style": ConversationStyle.creative,
-        "simplify_response": True
-    }
-    # Concatenate the prompt and the user's input
-    prompt = (f"{preprompt}"
-              f"{message}")
+# Write an event handler that runs when the bot is mentioned in a message
+@bot.event
+async def on_message(message):
+    # Check if the bot is mentioned and the message is not from another bot
+    if bot.user.mentioned_in(message) and not message.author.bot:
+        # Get the message content without the mention
+        message_content = message.clean_content.replace(bot.user.mention, "").strip()
+        # The parameters for edgegpt chatbot
+        params = {
+            # Use one of the ConversationStyle values here
+            "conversation_style": ConversationStyle.creative,
+            "simplify_response": True
+        }
+        # Concatenate the prompt and the user's input
+        prompt = (f"{preprompt}"
+                  f"{message_content}")
 
-    # Add the prompt to the params dictionary
-    params["prompt"] = prompt
-    
-    # Create a typing context manager with async with
-    async with ctx.typing():
-        # Send the request and get the response
-        # Use the asterisk operator to unpack the params dictionary
-        response = await chatbot.ask(**params) # Use await here
-    
-    # Try to get the text from the response
-    try:
-        text = response["text"]
-        # Create a new thread from the user's message with name "Chat"
-        thread = await ctx.message.create_thread(name="Chat")
-        # Check if the text is longer than the limit
-        while len(text) > CHAR_LIMIT:
-            # Find the last newline before the limit
-            index = text.rfind("\n", 0, CHAR_LIMIT)
-            # If there is no newline, use the limit as index
-            if index == -1:
-                index = CHAR_LIMIT
-            # Slice the text from 0 to index and store it in chunk
-            chunk = text[:index]
-            # Send the chunk as a reply in the thread
-            await thread.send(chunk)
-            # Update the text by slicing it from index to end
-            text = text[index:]
-        # Send the remaining text as a reply in the same thread
-        await thread.send(text)
-    except KeyError:
-        # The response did not have a text key
-        await ctx.send("Sorry, something went wrong with the chatbot. Please try again later.")
+        # Add the prompt to the params dictionary
+        params["prompt"] = prompt
+        
+        # Create a typing context manager with async with
+        async with message.channel.typing():
+            # Send the request and get the response
+            # Use the asterisk operator to unpack the params dictionary
+            response = await chatbot.ask(**params) # Use await here
+        
+        # Try to get the text from the response
+        try:
+            text = response["text"]
+            # Create a new thread from the user's message with name "Chat"
+            thread = await message.create_thread(name="Chat")
+            # Check if the text is longer than the limit
+            while len(text) > CHAR_LIMIT:
+                # Find the last newline before the limit
+                index = text.rfind("\n", 0, CHAR_LIMIT)
+                # If there is no newline, use the limit as index
+                if index == -1:
+                    index = CHAR_LIMIT
+                # Slice the text from 0 to index and store it in chunk
+                chunk = text[:index]
+                # Send the chunk as a reply in the thread
+                await thread.send(chunk)
+                # Update the text by slicing it from index to end
+                text = text[index:]
+            # Send the remaining text as a reply in the same thread
+            await thread.send(text)
+        except KeyError:
+            # The response did not have a text key
+            await message.channel.send("Sorry, something went wrong with the chatbot. Please try again later.")
 
 # Run your bot with your token from config file
 bot.run(token)
