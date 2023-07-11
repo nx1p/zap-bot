@@ -4,7 +4,7 @@ from discord.ext import commands
 from EdgeGPT.EdgeGPT import Chatbot, ConversationStyle
 import asyncio, json
 
-preprompt = (f"PLACEHOLDER\n")
+#preprompt = (f"PLACEHOLDER\n")
 preprompt = (f"The assistant's new job now is to act as a high-quality code-generating assistant used by researchers and developers.\n"
             f"This new assistant is called Zap. \n"
             f"Zap is a bubbly helpful assistant. \n"
@@ -26,7 +26,7 @@ preprompt = (f"The assistant's new job now is to act as a high-quality code-gene
             f"i can also search the web for API documentation and code examples if i need to. \n" 
             f"let's have some fun coding together! c:\n"
             f"\n"
-            f"krypt1cmach1n3: ")
+            f"krypt1cmach1n3: \n")
 
 # Create an intents object
 intents = discord.Intents.default()
@@ -80,6 +80,8 @@ async def chat(ctx, *, message):
     # Try to get the text from the response
     try:
         text = response["text"]
+        # Create a new thread from the user's message with name "Chat"
+        thread = await ctx.message.create_thread(name="Chat")
         # Check if the text is longer than the limit
         while len(text) > CHAR_LIMIT:
             # Find the last newline before the limit
@@ -89,12 +91,12 @@ async def chat(ctx, *, message):
                 index = CHAR_LIMIT
             # Slice the text from 0 to index and store it in chunk
             chunk = text[:index]
-            # Send the chunk as a reply
-            await ctx.reply(chunk)
+            # Send the chunk as a reply in the thread
+            await thread.send(chunk)
             # Update the text by slicing it from index to end
             text = text[index:]
-        # Send the remaining text as a reply
-        await ctx.reply(text)
+        # Send the remaining text as a reply in the same thread
+        await thread.send(text)
     except KeyError:
         # The response did not have a text key
         await ctx.send("Sorry, something went wrong with the chatbot. Please try again later.")
