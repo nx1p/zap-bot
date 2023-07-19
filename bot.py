@@ -83,7 +83,7 @@ def cleanup_message(message):
     # Check if the message content has a mention
     if bot.user.mentioned_in(message):
         # Get the message content without the mention
-        return message.clean_content.replace(bot.user.mention, "").strip()
+        return message.clean_content.replace(bot.user.mention, "").strip() # todo: i dont think this is working
     else:
         # If there is no mention, use the original message content
         return message.clean_content.strip()
