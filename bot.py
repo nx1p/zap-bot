@@ -49,11 +49,13 @@ def thread_owner_is_me(message):
     - message: discord.Message
     - returns True if the message is in a thread owned by the bot
     - returns False otherwise"""
-    if hasattr(message, "thread"): 
-        if message.thread.owner == bot.user:
+    if isinstance(message.channel, discord.Thread): 
+        thread = message.channel
+        if thread.owner == bot.user:
             return True
     else:
         return False
+
 
 def should_i_reply(message):
     """This function contains the logic for deciding if the bot should reply to a message.
@@ -110,6 +112,8 @@ async def on_message(message):
             text = response["text"]
             # Check if there is already a thread for this message or create one with name "Chat"
             # Use hasattr() to check if message.thread exists
+            # todo: fix this section (hasattr(message, "thread") is not the correct way)
+                # idk what i was thinking there lol 
             thread = message.thread if hasattr(message, "thread") else await message.create_thread(name="Chat")
             # Check if the text is longer than the limit
             while len(text) > CHAR_LIMIT:
