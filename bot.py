@@ -4,46 +4,88 @@ from discord.ext import commands
 from EdgeGPT.EdgeGPT import Chatbot, ConversationStyle
 import asyncio, json
 
+# Load the config file and get the token
+def get_token(config_file_location: str) -> str:
+    """Open json config file and return token."""
+    with open(config_file_location) as config_file:
+        data = json.load(config_file)
+        token = data["TOKEN"]
+        return token
+
+global bot 
+global b_chat # Declare a global variable for b_chat
+global CHAR_LIMIT
+global preprompt
+
 preprompt = (f"PLACEHOLDER\n")
+CHAR_LIMIT = 2000 # Define a constant for the Discord character limit
 
 # Create an intents object
 intents = discord.Intents.default()
 # Enable the members intent (requires verification)
 intents.members = True
 intents.message_content = True
+bot = commands.Bot(command_prefix="", intents=intents) # Create a bot instance with intents and no prefix
 
-# Load the config file and get the token
-with open('./secrets/config.json') as f:
-  data = json.load(f)
-  token = data["TOKEN"]
 
-# Create a bot instance with intents and no prefix
-bot = commands.Bot(command_prefix="", intents=intents)
+async def setup_edgegpt():
+    """This function is used to setup the edgegpt chatbot.
+    - returns: None"""
+    # Create an edgegpt chatbot instance with your cookie
+    global b_chat
+    cookies = json.loads(open("./secrets/bing_cookies_*.json", encoding="utf-8").read())  
+    b_chat = await Chatbot.create(cookies=cookies) # Use await here
 
-# Declare a global variable for the chatbot
-chatbot = None
-
-# Define a constant for the character limit
-CHAR_LIMIT = 2000
-
-# Write an event handler that runs when the bot is ready
+# Event handler
+# - Runs when the Discord bot is ready
 @bot.event
 async def on_ready():
-    global chatbot # Use the global variable
-    # Create an edgegpt chatbot instance with your cookie
-    # cookies may not be required
-    #chatbot = await Chatbot(cookie="_U=your_cookie_here")
-    cookies = json.loads(open("./secrets/bing_cookies_*.json", encoding="utf-8").read())  # might omit cookies option
-    chatbot = await Chatbot.create(cookies=cookies) # Use await here
+    await setup_edgegpt()
     print("Chatbot is ready")
 
-# Write an event handler that runs when the bot is mentioned in a message
+def thread_owner_is_me(message):
+    """Check if message is from a thread owned by the bot. \n
+    This function is used to check if the bot should reply to a message. 
+    - message: discord.Message
+    - returns True if the message is in a thread owned by the bot
+    - returns False otherwise"""
+    if hasattr(message, "thread"): 
+        if message.thread.owner == bot.user:
+            return True
+    else:
+        return False
+
+def should_i_reply(message):
+    """This function contains the logic for deciding if the bot should reply to a message.
+    - message: discord.Message
+    - returns: bool
+        - returns True if the bot should reply to the message
+            - if
+                - message is not from a bot
+                - (bot is mentioned OR message is in a thread owned by the bot)
+        - returns False otherwise"""
+    if not message.author.bot:     # must not be from a bot
+        if thread_owner_is_me(message): # or must be in a thread owned by the bot
+            return True
+        if bot.user.mentioned_in(message): # must contain a mention of the bot
+            return True
+
+
+# Event handler
+# - Runs when a message is received
 @bot.event
 async def on_message(message):
-    # Check if the bot is mentioned and the message is not from another bot
-    if bot.user.mentioned_in(message) and not message.author.bot:
-        # Get the message content without the mention
-        message_content = message.clean_content.replace(bot.user.mention, "").strip()
+    # Log received messages
+    print(f"Message from {message.author}: {message.content}")
+    # Check if the bot is mentioned or if the message is in a thread owned by the bot and the message is not from another bot
+    if should_i_reply(message):
+        # Check if the message content has a mention
+        if bot.user.mentioned_in(message):
+            # Get the message content without the mention
+            message_content = message.clean_content.replace(bot.user.mention, "").strip()
+        else:
+            # If there is no mention, use the original message content
+            message_content = message.clean_content.strip()
         # The parameters for edgegpt chatbot
         params = {
             # Use one of the ConversationStyle values here
@@ -61,13 +103,14 @@ async def on_message(message):
         async with message.channel.typing():
             # Send the request and get the response
             # Use the asterisk operator to unpack the params dictionary
-            response = await chatbot.ask(**params) # Use await here
+            response = await b_chat.ask(**params) # Use await here
         
         # Try to get the text from the response
         try:
             text = response["text"]
-            # Create a new thread from the user's message with name "Chat"
-            thread = await message.create_thread(name="Chat")
+            # Check if there is already a thread for this message or create one with name "Chat"
+            # Use hasattr() to check if message.thread exists
+            thread = message.thread if hasattr(message, "thread") else await message.create_thread(name="Chat")
             # Check if the text is longer than the limit
             while len(text) > CHAR_LIMIT:
                 # Find the last newline before the limit
@@ -87,5 +130,5 @@ async def on_message(message):
             # The response did not have a text key
             await message.channel.send("Sorry, something went wrong with the chatbot. Please try again later.")
 
-# Run your bot with your token from config file
-bot.run(token)
+if __name__ == "__main__": # If script run
+    bot.run(get_token('./secrets/config.json')) # Run bot with token from config file
