@@ -116,6 +116,26 @@ async def ask_bchat(message_content):
         return "Sorry, something went wrong with the chatbot. Please try again later."
     return text
 
+def chunk_it(text):
+    chunks = []
+    # Check if the text is longer than the limit and chunk it if necessary
+    while len(text) > CHAR_LIMIT:
+        # Find the last newline before the limit
+        index = text.rfind("\n", 0, CHAR_LIMIT)
+        # If there is no newline, use the limit as index
+        if index == -1:
+            index = CHAR_LIMIT
+        # Slice the text from 0 to index and store it in chunk
+        chunk = text[:index]
+        # Append the chunk to the list of chunks
+        chunks.append(chunk)
+        # Update the text by slicing it from index to end
+        text = text[index:]
+    # Append the remaining text to the list of chunks
+    chunks.append(text)
+    # Return the list of chunks
+    return chunks
+
 # Event handler
 # - Runs when a message is received
 @bot.event
@@ -135,21 +155,9 @@ async def on_message(message):
         async with message.channel.typing():
             text = await ask_bchat(message_content) # Send the message to the chatbot and get the response
         
-        # Check if the text is longer than the limit and chunk it if necessary
-        while len(text) > CHAR_LIMIT:
-            # Find the last newline before the limit
-            index = text.rfind("\n", 0, CHAR_LIMIT)
-            # If there is no newline, use the limit as index
-            if index == -1:
-                index = CHAR_LIMIT
-            # Slice the text from 0 to index and store it in chunk
-            chunk = text[:index]
-            # Send the chunk as a reply in the thread
-            await thread.send(chunk)
-            # Update the text by slicing it from index to end
-            text = text[index:]
-        # Send the remaining text as a reply in the same thread
-        await thread.send(text)
+        # Chunk the text if necessary
+        for output_msg in chunk_it(text):
+            await thread.send(output_msg)
 
 if __name__ == "__main__": # If script run
     bot.run(get_token('./secrets/config.json')) # Run bot with token from config file
