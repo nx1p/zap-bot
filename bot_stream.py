@@ -142,7 +142,7 @@ async def retrieve_msg_history(thread: discord.Thread):
     msg_history = []
     i = 0
     async for message in thread.history(limit=101):
-        if i == 0: #skip first message
+        if i == 0: #skip first message (edit: iirc cuz the first msg is the last one which is from zap)
             i += 1
             continue
         if not message.content == "":
@@ -164,21 +164,23 @@ async def ask_bchat(message_content, msg_history):
     # Send the request and return stream generator
     return b_chat.ask_stream(**params)
 
-def chunk_it(text):
-    chunks = []
+def chunk_it(text: str) -> list:
+    """Chunk the output into a list of strings that are less than the discord character limit.
+    - returns: list of strings"""
+    chunks: list = []
     # Check if the text is longer than the limit and chunk it if necessary
     while len(text) > CHAR_LIMIT:
         # Find the last newline before the limit
-        index = text.rfind("\n", 0, CHAR_LIMIT)
+        index: int = text.rfind("\n", 0, CHAR_LIMIT)
         # If there is no newline, use the limit as index
         if index == -1:
             index = CHAR_LIMIT
         # Slice the text from 0 to index and store it in chunk
-        chunk = text[:index]
+        chunk: str = text[:index]
         # Append the chunk to the list of chunks
         chunks.append(chunk)
         # Update the text by slicing it from index to end
-        text = text[index:]
+        text: str = text[index:]
     # Append the remaining text to the list of chunks
     chunks.append(text)
     # Return the list of chunks
