@@ -1,0 +1,8 @@
+version: '3.9' 
+
+services:
+  app: 
+    build: . 
+    restart: always
+    volumes:
+      - ./secrets:/app/secrets
