@@ -11,7 +11,8 @@ python = "^3.10"
 discord-py = "^2.3.2"
 #edgegpt = "0.11.2"
 #edgegpt = "0.11.8"
-edgegpt = "^0.13.2"
+#edgegpt = "^0.13.2"
+edgegpt = { git = "https://github.com/jacobgelling/EdgeGPT.git" }
 
 
 [build-system]
